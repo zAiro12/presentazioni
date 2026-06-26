@@ -1,0 +1,9 @@
+[
+  {
+    "slug": "2026-07-02-corso-msys-git",
+    "title": "Corso MSYS Git",
+    "description": "Introduzione a Git con MSYS2: installazione, workflow base, branching e merge. Pensato per sviluppatori Windows che si avvicinano al version control.",
+    "date": "2026-07-02",
+    "file": "./2026-07-02-corso-msys-git/index.slides.html"
+  }
+]
