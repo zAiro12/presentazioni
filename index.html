@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lodestar — Presentazioni</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #2a3142;
+      --bg-deep:     #1e2535;
+      --surface:     #353d52;
+      --surface-2:   #3e4660;
+      --border:      rgba(255,255,255,0.08);
+      --text:        #f2f2f2;
+      --text-muted:  rgba(242,242,242,0.55);
+      --text-faint:  rgba(242,242,242,0.30);
+      --pink:        #ff168e;
+      --blue:        #01468a;
+      --glaucous:    #6284bb;
+      --radius-md:   0.5rem;
+      --radius-lg:   0.75rem;
+      --radius-xl:   1rem;
+      --font:        'Jost','Futura PT','Century Gothic',sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-deep);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bg-mesh {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    }
+    .blob {
+      position: absolute; border-radius: 50%; filter: blur(90px);
+      animation: float 14s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%      { transform: translate(40px,-30px) scale(1.08); }
+      66%      { transform: translate(-25px,20px) scale(0.94); }
+    }
+
+    .page { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: clamp(2rem,5vw,4rem) clamp(1rem,3vw,2rem); flex: 1; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: clamp(2.5rem, 6vw, 5rem);
+    }
+    .logo { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
+    .logo-text { font-weight: 600; font-size: 1.25rem; color: var(--text); letter-spacing: 0.02em; }
+
+    .hero { margin-bottom: clamp(2rem,5vw,4rem); }
+    .eyebrow {
+      font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--pink); font-weight: 600; margin-bottom: 0.75rem;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;
+      margin-bottom: 0.9rem;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #ff168e, #6284bb, #01468a);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p { font-size: 1rem; color: var(--text-muted); max-width: 52ch; line-height: 1.65; }
+    .lodestar-line {
+      display: block; height: 3px; width: 48px; border-radius: 9999px;
+      background: var(--pink); margin: 1.4rem 0;
+    }
+
+    .section-label {
+      font-size: 0.70rem; letter-spacing: 0.20em; text-transform: uppercase;
+      color: var(--text-faint); font-weight: 600;
+      margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.6rem;
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(260px,100%), 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex; flex-direction: column; gap: 0.6rem;
+      transition: background 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+      position: relative; overflow: hidden;
+      backdrop-filter: blur(8px);
+    }
+    .card::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit;
+      background: linear-gradient(135deg, rgba(255,22,142,0.06), transparent 60%);
+      opacity: 0; transition: opacity 0.22s;
+    }
+    .card:hover { background: rgba(255,255,255,0.07); transform: translateY(-3px); box-shadow: 0 8px 28px rgba(255,22,142,0.10); }
+    .card:hover::before { opacity: 1; }
+
+    .card-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 0.2rem 0.55rem; border-radius: 9999px;
+      margin-bottom: 0.2rem;
+    }
+    .badge-template {
+      background: rgba(98,132,187,0.15); color: #6284bb;
+      border: 1px solid rgba(98,132,187,0.25);
+    }
+    .badge-presentation {
+      background: rgba(255,22,142,0.12); color: #ff168e;
+      border: 1px solid rgba(255,22,142,0.22);
+    }
+
+    .card-title { font-size: 1rem; font-weight: 600; line-height: 1.3; }
+    .card-desc  { font-size: 0.875rem; color: var(--text-muted); line-height: 1.55; }
+
+    .card-arrow {
+      margin-top: auto; padding-top: 0.6rem;
+      font-size: 0.78rem; color: var(--text-faint);
+      display: flex; align-items: center; gap: 0.3rem;
+      letter-spacing: 0.06em;
+      transition: color 0.2s, gap 0.2s;
+    }
+    .card:hover .card-arrow { color: var(--pink); gap: 0.5rem; }
+
+    .card-empty {
+      background: rgba(255,255,255,0.015);
+      border: 1px dashed rgba(255,255,255,0.10);
+      border-radius: var(--radius-xl);
+      padding: 1.5rem;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0.5rem; text-align: center;
+      min-height: 140px;
+    }
+    .card-empty span:first-child { font-size: 1.4rem; opacity: 0.35; }
+    .card-empty span:last-child  { font-size: 0.8rem; color: var(--text-faint); }
+
+    .brand-bar {
+      height: 3px;
+      background: linear-gradient(90deg, #01468a 0%, #6284bb 50%, #ff168e 100%);
+      width: 100%; position: fixed; bottom: 0; left: 0; z-index: 10;
+    }
+
+    footer {
+      position: relative; z-index: 1;
+      padding: 1.5rem clamp(1rem,3vw,2rem) 2.5rem;
+      text-align: center;
+      font-size: 0.75rem; color: var(--text-faint);
+      letter-spacing: 0.08em;
+    }
+    footer a { color: var(--text-faint); text-decoration: none; transition: color 0.2s; }
+    footer a:hover { color: var(--pink); }
+
+    #spotlight { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+    @media (max-width: 480px) {
+      .cards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-mesh">
+  <div class="blob" style="width:500px;height:500px;top:-150px;right:-120px;background:#ff168e;opacity:0.08;animation-delay:0s;"></div>
+  <div class="blob" style="width:380px;height:380px;bottom:-100px;left:-80px;background:#01468a;opacity:0.10;animation-delay:-5s;"></div>
+  <div class="blob" style="width:240px;height:240px;top:40%;left:15%;background:#6284bb;opacity:0.07;animation-delay:-9s;"></div>
+</div>
+
+<div id="spotlight"></div>
+
+<main class="page">
+
+  <header>
+    <a href="." class="logo" aria-label="Lodestar home">
+      <svg width="36" height="36" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="28" cy="28" r="22" stroke="#f2f2f2" stroke-width="2.5" fill="none"/>
+        <line x1="18" y1="18" x2="38" y2="38" stroke="#ff168e" stroke-width="2.8" stroke-linecap="round"/>
+        <line x1="38" y1="18" x2="18" y2="38" stroke="#6284bb" stroke-width="2.8" stroke-linecap="round"/>
+        <circle cx="28" cy="28" r="3.5" fill="#f2f2f2"/>
+      </svg>
+      <span class="logo-text">Lodestar</span>
+    </a>
+  </header>
+
+  <div class="hero">
+    <p class="eyebrow">Presentazioni</p>
+    <h1><span class="gradient-text">Hub delle presentazioni</span></h1>
+    <span class="lodestar-line"></span>
+    <p>Tutte le presentazioni Lodestar in un unico posto. Ogni slide è fullscreen, navigabile da tastiera e ottimizzata per il proiettore.</p>
+  </div>
+
+  <p class="section-label">Template</p>
+  <div class="cards" style="margin-bottom: 2.5rem;">
+    <a class="card" href="./template/lodestar-template.slides.html" target="_blank" rel="noopener">
+      <span class="card-badge badge-template">Template</span>
+      <span class="card-title">Lodestar Template</span>
+      <span class="card-desc">Template vuoto con tutti i componenti: slide titolo, contenuto, card grid e closing. Punto di partenza per ogni nuova presentazione.</span>
+      <span class="card-arrow">Apri template <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+    </a>
+  </div>
+
+  <p class="section-label">Presentazioni</p>
+  <div class="cards" id="presentations-grid">
+    <div class="card-empty">
+      <span>+</span>
+      <span>Nessuna presentazione ancora — crea la prima cartella nel repo</span>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <a href="https://lodestar.eu" target="_blank" rel="noopener">lodestar.eu</a>
+  &nbsp;·&nbsp; Powered by GitHub Pages
+</footer>
+
+<div class="brand-bar"></div>
+
+<script>
+  document.addEventListener('mousemove', (e) => {
+    const s = document.getElementById('spotlight');
+    if (s) s.style.background = `radial-gradient(480px circle at ${e.clientX}px ${e.clientY}px, rgba(255,22,142,0.05), transparent 45%)`;
+  });
+</script>
+</body>
+</html>
