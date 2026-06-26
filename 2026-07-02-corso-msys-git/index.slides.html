@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="slides-format" content="viewport">
+    <title>Git Rebase — Corso MSYS Git · Lodestar 2026</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+    <!-- Tailwind v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <style type="text/tailwindcss">
+        @theme {
+            --color-bg:             #2a3142;
+            --color-bg-deep:        #1e2535;
+            --color-surface:        #353d52;
+            --color-text:           #f2f2f2;
+            --color-text-secondary: rgba(242,242,242,0.75);
+            --color-text-muted:     rgba(242,242,242,0.45);
+            --color-accent-1:  #ff168e;
+            --color-accent-2:  #6284bb;
+            --color-accent-3:  #01468a;
+            --color-anthracite:    #3c3c3b;
+            --color-midnight:      #01468a;
+            --color-glaucous:      #6284bb;
+            --color-frost:         #f2f2f2;
+            --color-gunmetal:      #2a3142;
+            --color-deep-pink:     #ff168e;
+            --color-glass-bg:      rgba(255,255,255,0.05);
+            --color-glass-border:  rgba(255,255,255,0.10);
+            --color-vignette:      rgba(0,0,0,0.35);
+            --font-display: 'Jost', 'Futura PT', 'Century Gothic', sans-serif;
+            --font-body:    'Jost', 'Futura PT', 'Century Gothic', sans-serif;
+        }
+    </style>
+
+    <style>
+        :root {
+            --color-bg: #2a3142;
+            --color-text: #f2f2f2;
+            --glow-color-rgb: 255,22,142;
+            --pink-rgb: 255,22,142;
+            --blue-rgb: 1,70,138;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body {
+            background: var(--color-bg);
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+        }
+        body {
+            font-family: 'Jost', 'Futura PT', 'Century Gothic', sans-serif;
+            color: #f2f2f2;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .deck { width: 100vw; height: 100vh; position: relative; }
+        .slide {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: var(--color-bg);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            opacity: 0; transform: scale(0.97);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            pointer-events: none; overflow: hidden;
+        }
+        .slide.active { opacity: 1; transform: scale(1); pointer-events: all; }
+        .slide > .content {
+            position: relative; z-index: 2;
+            width: 100%; max-width: 1100px;
+            padding: clamp(1.5rem, 4vw, 4rem);
+        }
+        .reveal { opacity: 0; transform: translateY(18px); }
+
+        .nav-controls {
+            position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 16px; z-index: 100;
+            background: rgba(42,49,66,0.85);
+            backdrop-filter: blur(12px);
+            padding: 10px 24px; border-radius: 40px;
+            border: 1px solid rgba(98,132,187,0.25);
+        }
+        .nav-btn {
+            width: 38px; height: 38px; border: none;
+            background: rgba(255,255,255,0.06);
+            color: #ff168e; border-radius: 50%;
+            font-size: 1.25rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.25s;
+        }
+        .nav-btn:hover { background: rgba(255,22,142,0.15); }
+        .slide-dots { display: flex; gap: 7px; }
+        .slide-dots .dot {
+            width: 9px; height: 9px; border-radius: 50%;
+            background: rgba(242,242,242,0.25); cursor: pointer;
+            transition: background 0.3s, transform 0.3s;
+        }
+        .slide-dots .dot.active { background: #ff168e; transform: scale(1.35); }
+        .slide-counter { font-size: 0.78rem; color: rgba(242,242,242,0.5); min-width: 40px; text-align: center; letter-spacing: 0.05em; }
+
+        @keyframes float-slow {
+            0%   { transform: translate(0,0) scale(1); }
+            25%  { transform: translate(55px,-45px) scale(1.10); }
+            50%  { transform: translate(-35px,38px) scale(0.92); }
+            75%  { transform: translate(45px,18px) scale(1.07); }
+            100% { transform: translate(0,0) scale(1); }
+        }
+        @keyframes float-drift {
+            0%   { transform: translate(0,0) scale(1) rotate(0deg); }
+            33%  { transform: translate(-45px,-55px) scale(1.13) rotate(2deg); }
+            66%  { transform: translate(38px,28px) scale(0.88) rotate(-2deg); }
+            100% { transform: translate(0,0) scale(1) rotate(0deg); }
+        }
+        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+        .gradient-mesh { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+        .blob { position: absolute; border-radius: 50%; filter: blur(80px); animation: float-slow 12s ease-in-out infinite; }
+        .blob:nth-child(2) { animation: float-drift 16s ease-in-out infinite; }
+        .blob:nth-child(3) { animation: float-slow 20s ease-in-out infinite reverse; }
+
+        .lodestar-line {
+            display: block; height: 3px; border-radius: 9999px;
+            background: #ff168e; margin: 0;
+        }
+        .lodestar-line-gradient {
+            display: block; height: 3px; border-radius: 9999px;
+            background: linear-gradient(90deg, #01468a, #6284bb, #ff168e);
+        }
+
+        .slide::before {
+            content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            background-repeat: repeat; background-size: 256px 256px; opacity: 0.025; mix-blend-mode: overlay;
+        }
+        .slide::after {
+            content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.35) 100%);
+        }
+
+        .text-glow { text-shadow: 0 0 20px rgba(var(--glow-color-rgb),0.55), 0 0 40px rgba(var(--glow-color-rgb),0.22); }
+        @keyframes glow-pulse {
+            0%,100% { text-shadow: 0 0 20px rgba(255,22,142,0.55), 0 0 40px rgba(255,22,142,0.22); }
+            50%      { text-shadow: 0 0 30px rgba(255,22,142,0.85), 0 0 60px rgba(255,22,142,0.35); }
+        }
+        .glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+
+        .glass-card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 14px;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .glass-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(255,22,142,0.12); }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #ff168e, #6284bb, #01468a);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent; color: transparent;
+        }
+
+        .brand-bar {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: 5px; z-index: 10;
+            background: linear-gradient(90deg, #01468a 0%, #6284bb 50%, #ff168e 100%);
+        }
+
+        .accent-border-left {
+            border-left: 4px solid #ff168e;
+            border-radius: 0 8px 8px 0;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+        }
+
+        .logo-mark { font-family: 'Jost','Futura PT','Century Gothic',sans-serif; font-weight: 600; letter-spacing: 0.02em; }
+        .mouse-spotlight { position: fixed; inset: 0; z-index: 99; pointer-events: none; }
+
+        /* Slide-specific */
+        .slide-title .content { text-align: center; }
+        .slide-title h1 {
+            font-size: clamp(2.8rem, 6vw, 5.5rem);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+        .slide-title .subtitle {
+            font-size: clamp(0.85rem, 1.4vw, 1.1rem);
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(242,242,242,0.55);
+            margin-top: 1.2rem;
+        }
+        .slide-content h2 {
+            font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            margin-bottom: 0.4rem;
+        }
+        .slide-content .eyebrow {
+            font-size: clamp(0.7rem, 1vw, 0.85rem);
+            letter-spacing: 0.20em;
+            text-transform: uppercase;
+            color: #ff168e;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+        .slide-closing .content { text-align: center; }
+        .slide-closing h2 {
+            font-size: clamp(2.2rem, 5vw, 4.5rem);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        /* Code block */
+        .code-block {
+            background: rgba(0,0,0,0.45);
+            border: 1px solid rgba(255,22,142,0.20);
+            border-radius: 10px;
+            padding: 1.2rem 1.5rem;
+            font-family: 'JetBrains Mono','Fira Code','Cascadia Code',monospace;
+            font-size: clamp(0.72rem, 1.1vw, 0.92rem);
+            line-height: 1.7;
+            color: #f2f2f2;
+            overflow: hidden;
+            position: relative;
+        }
+        .code-block .cm { color: rgba(242,242,242,0.38); font-style: italic; }
+        .code-block .kw { color: #ff168e; font-weight: 600; }
+        .code-block .br { color: #6284bb; }
+        .code-block .ok { color: #4cde9a; }
+        .code-block .wa { color: #f5c842; }
+        .code-block .label { color: rgba(242,242,242,0.35); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.5rem; display: block; }
+
+        /* Timeline / diagram */
+        .commit-row { display: flex; align-items: center; gap: 0; margin-bottom: 0.2rem; }
+        .commit-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+        .commit-line { height: 3px; flex: 1; }
+        .commit-label { font-size: 0.78rem; color: rgba(242,242,242,0.65); margin-left: 0.5rem; white-space: nowrap; }
+
+        /* Comparison table */
+        .cmp-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .cmp-table th {
+            padding: 0.65rem 1rem;
+            font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 600;
+            background: rgba(255,255,255,0.04); border-bottom: 2px solid #ff168e;
+            text-align: left;
+        }
+        .cmp-table td {
+            padding: 0.6rem 1rem;
+            font-size: clamp(0.8rem, 1.1vw, 0.92rem);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            vertical-align: top; line-height: 1.5;
+        }
+        .cmp-table tr:last-child td { border-bottom: none; }
+        .tag-good { display: inline-block; background: rgba(76,222,154,0.15); color: #4cde9a; border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 600; }
+        .tag-bad  { display: inline-block; background: rgba(255,22,142,0.15); color: #ff6bb5; border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 600; }
+        .tag-warn { display: inline-block; background: rgba(245,200,66,0.15); color: #f5c842; border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 600; }
+
+        /* Warning callout */
+        .callout-warn {
+            background: rgba(245,200,66,0.08); border: 1px solid rgba(245,200,66,0.28);
+            border-left: 4px solid #f5c842; border-radius: 0 10px 10px 0;
+            padding: 0.9rem 1.2rem;
+        }
+        .callout-ok {
+            background: rgba(76,222,154,0.07); border: 1px solid rgba(76,222,154,0.22);
+            border-left: 4px solid #4cde9a; border-radius: 0 10px 10px 0;
+            padding: 0.9rem 1.2rem;
+        }
+        .callout-pink {
+            background: rgba(255,22,142,0.07); border: 1px solid rgba(255,22,142,0.22);
+            border-left: 4px solid #ff168e; border-radius: 0 10px 10px 0;
+            padding: 0.9rem 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="mouse-spotlight" id="spotlight"></div>
+
+<div class="deck">
+
+    <!-- ══════════════════════════════════
+         SLIDE 1 · TITLE
+         ══════════════════════════════════ -->
+    <div class="slide slide-title active" data-slide="1">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:480px;height:480px;top:-120px;right:-80px;background:#ff168e;opacity:0.12;"></div>
+            <div class="blob" style="width:320px;height:320px;bottom:-80px;left:-60px;background:#01468a;opacity:0.14;"></div>
+            <div class="blob" style="width:200px;height:200px;top:38%;left:12%;background:#6284bb;opacity:0.10;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1;width:100%;height:100%;"></canvas>
+        <div class="content">
+            <div style="margin-bottom:2.5rem;animation:float 3.5s ease-in-out infinite;display:inline-block;">
+                <svg width="200" viewBox="0 0 220 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Lodestar">
+                    <circle cx="28" cy="28" r="22" stroke="#f2f2f2" stroke-width="2.5" fill="none"/>
+                    <line x1="18" y1="18" x2="38" y2="38" stroke="#ff168e" stroke-width="2.8" stroke-linecap="round"/>
+                    <line x1="38" y1="18" x2="18" y2="38" stroke="#6284bb" stroke-width="2.8" stroke-linecap="round"/>
+                    <circle cx="28" cy="28" r="3.5" fill="#f2f2f2"/>
+                    <text x="62" y="36" fill="#f2f2f2" font-size="26" font-family="Jost,Futura PT,Century Gothic,sans-serif" font-weight="600">Lodestar</text>
+                </svg>
+            </div>
+            <h1 class="gradient-text reveal">Git Rebase</h1>
+            <h1 class="reveal" style="font-size:clamp(1.4rem,3vw,2.6rem);font-weight:400;color:rgba(242,242,242,0.7);margin-top:0.4rem;">Smettila di inquinare la history</h1>
+            <p class="subtitle reveal">Corso MSYS Git · 2 luglio 2026</p>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 2 · AGENDA
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="2">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:300px;height:300px;top:-60px;right:-60px;background:#01468a;opacity:0.09;"></div>
+            <div class="blob" style="width:200px;height:200px;bottom:-50px;left:-40px;background:#ff168e;opacity:0.07;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">AGENDA</p>
+            <h2 class="reveal">Di cosa parleremo</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.8rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                <div class="glass-card reveal" style="padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;">
+                    <span style="color:#ff168e;font-size:1.3rem;font-weight:700;min-width:1.8rem;">01</span>
+                    <span style="color:rgba(242,242,242,0.85);font-size:0.95rem;line-height:1.5;">Come funziona la history di Git</span>
+                </div>
+                <div class="glass-card reveal" style="padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;">
+                    <span style="color:#ff168e;font-size:1.3rem;font-weight:700;min-width:1.8rem;">02</span>
+                    <span style="color:rgba(242,242,242,0.85);font-size:0.95rem;line-height:1.5;">Merge classico: cosa succede davvero</span>
+                </div>
+                <div class="glass-card reveal" style="padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;">
+                    <span style="color:#ff168e;font-size:1.3rem;font-weight:700;min-width:1.8rem;">03</span>
+                    <span style="color:rgba(242,242,242,0.85);font-size:0.95rem;line-height:1.5;">Rebase: la meccanica esatta</span>
+                </div>
+                <div class="glass-card reveal" style="padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;">
+                    <span style="color:#ff168e;font-size:1.3rem;font-weight:700;min-width:1.8rem;">04</span>
+                    <span style="color:rgba(242,242,242,0.85);font-size:0.95rem;line-height:1.5;">Interactive rebase e squash</span>
+                </div>
+                <div class="glass-card reveal" style="padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;">
+                    <span style="color:#ff168e;font-size:1.3rem;font-weight:700;min-width:1.8rem;">05</span>
+                    <span style="color:rgba(242,242,242,0.85);font-size:0.95rem;line-height:1.5;">Workflow team: golden rule e force-push</span>
+                </div>
+                <div class="glass-card reveal" style="padding:1.2rem 1.5rem;display:flex;align-items:flex-start;gap:1rem;">
+                    <span style="color:#ff168e;font-size:1.3rem;font-weight:700;min-width:1.8rem;">06</span>
+                    <span style="color:rgba(242,242,242,0.85);font-size:0.95rem;line-height:1.5;">Pitfall, conflitti e recovery</span>
+                </div>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 3 · IL PROBLEMA
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="3">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:350px;height:350px;top:-80px;right:-70px;background:#ff168e;opacity:0.10;"></div>
+            <div class="blob" style="width:220px;height:220px;bottom:-60px;left:-40px;background:#6284bb;opacity:0.09;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">IL PROBLEMA</p>
+            <h2 class="reveal">La tua history <span style="color:#ff168e;">assomiglia a questo?</span></h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
+            <div class="code-block reveal" style="margin-bottom:1.4rem;">
+                <span class="label">git log --oneline</span>
+                <span style="color:#f5c842;">a8f3c2e</span> Merge branch 'feature/login' into develop<br>
+                <span style="color:#6284bb;">b1d0091</span> fix: fix del fix<br>
+                <span style="color:#6284bb;">c4e8812</span> fix typo<br>
+                <span style="color:#6284bb;">d9a1234</span> WIP<br>
+                <span style="color:#f5c842;">e3c5678</span> Merge branch 'develop' into feature/login<br>
+                <span style="color:#6284bb;">f7b2345</span> aggiunto console.log per debug<br>
+                <span style="color:#f5c842;">1a2b3c4</span> Merge branch 'hotfix/xyz' into develop<br>
+                <span style="color:#6284bb;">2d3e4f5</span> prova<br>
+            </div>
+            <div class="callout-warn reveal">
+                <span style="color:#f5c842;font-weight:600;">⚠ Questo è rumore, non storia.</span>
+                <span style="color:rgba(242,242,242,0.75);font-size:0.9rem;display:block;margin-top:0.3rem;">Una history illeggibile rende impossibile il code review, il bisect e il rollback chirurgico.</span>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 4 · COME FUNZIONA GIT DAG
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="4">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:280px;height:280px;top:-50px;right:-50px;background:#01468a;opacity:0.10;"></div>
+            <div class="blob" style="width:180px;height:180px;bottom:-40px;left:-30px;background:#ff168e;opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">FONDAMENTA</p>
+            <h2 class="reveal">Git è un DAG di snapshot</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;align-items:start;">
+                <div class="reveal">
+                    <p style="color:rgba(242,242,242,0.75);font-size:clamp(0.9rem,1.3vw,1rem);line-height:1.7;">
+                        Ogni commit è un <strong style="color:#f2f2f2;">oggetto immutabile</strong> identificato dal suo SHA-1. Punta al commit padre e a un tree che rappresenta l'intero snapshot del repo.
+                    </p>
+                    <p style="color:rgba(242,242,242,0.75);font-size:clamp(0.9rem,1.3vw,1rem);line-height:1.7;margin-top:0.8rem;">
+                        Un branch è solo un <strong style="color:#ff168e;">puntatore mobile</strong> a un commit. Spostarlo non cambia i commit — cambia solo dove punta l'etichetta.
+                    </p>
+                </div>
+                <div class="reveal">
+                    <div class="code-block">
+                        <span class="label">struttura di un commit</span>
+                        <span class="kw">commit</span> a8f3c2e<br>
+                        tree   3f8e1b2<br>
+                        parent d9a1234<br>
+                        author  Alice &lt;alice@co.it&gt;<br>
+                        <br>
+                        <span class="cm"># Il SHA cambia se cambia</span><br>
+                        <span class="cm"># qualsiasi campo — incluso il parent.</span><br>
+                        <span class="cm"># Questo è ciò che fa rebase.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 5 · MERGE: COSA SUCCEDE
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="5">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:300px;height:300px;top:-60px;right:-60px;background:#6284bb;opacity:0.09;"></div>
+            <div class="blob" style="width:200px;height:200px;bottom:-50px;left:-40px;background:#ff168e;opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">MERGE CLASSICO</p>
+            <h2 class="reveal">Un merge commit preserva la biforcazione</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;">
+                <div class="reveal">
+                    <div class="code-block" style="margin-bottom:1rem;">
+                        <span class="label">prima del merge</span>
+                        main:    A ─── B ─── C<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br>
+                        feature:  D ─── E
+                    </div>
+                    <div class="code-block">
+                        <span class="label">dopo git merge feature</span>
+                        main:    A ─── B ─── C ─── <span class="kw">M</span><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/<br>
+                        feature:  D ─────── E
+                    </div>
+                </div>
+                <div class="reveal">
+                    <p style="color:rgba(242,242,242,0.75);font-size:0.92rem;line-height:1.65;margin-bottom:0.8rem;"><strong style="color:#f2f2f2;">M</strong> è il merge commit: ha <em>due parent</em>, C e E. Git registra esattamente quando i rami si sono incontrati.</p>
+                    <div class="callout-ok" style="margin-bottom:0.7rem;">
+                        <span style="color:#4cde9a;font-weight:600;">✓ Vantaggi</span><br>
+                        <span style="color:rgba(242,242,242,0.7);font-size:0.88rem;">Non-destructive. Sicuro su branch condivisi. Preserva il contesto temporale esatto.</span>
+                    </div>
+                    <div class="callout-warn">
+                        <span style="color:#f5c842;font-weight:600;">✗ Svantaggi</span><br>
+                        <span style="color:rgba(242,242,242,0.7);font-size:0.88rem;">History non-lineare. Log difficile da leggere su progetti con molti branch. Ogni integrazione aggiunge un commit rumore.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 6 · REBASE: LA MECCANICA
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="6">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:350px;height:350px;top:-70px;right:-70px;background:#ff168e;opacity:0.11;"></div>
+            <div class="blob" style="width:220px;height:220px;bottom:-50px;left:-40px;background:#01468a;opacity:0.09;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">GIT REBASE</p>
+            <h2 class="reveal">Riscrive il parent — non il contenuto</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;">
+                <div class="reveal">
+                    <div class="code-block" style="margin-bottom:1rem;">
+                        <span class="label">prima del rebase</span>
+                        main:    A ─── B ─── C<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br>
+                        feature:  D' ─ E'
+                    </div>
+                    <div class="code-block">
+                        <span class="label">dopo git rebase main</span>
+                        main:    A ─── B ─── C<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br>
+                        feature:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ok">D''</span> ─ <span class="ok">E''</span>
+                    </div>
+                </div>
+                <div class="reveal">
+                    <p style="color:rgba(242,242,242,0.75);font-size:0.92rem;line-height:1.65;margin-bottom:0.9rem;">
+                        Git prende ogni commit di <em>feature</em>, lo <strong style="color:#ff168e;">riapplica come patch</strong> sopra l'ultimo commit di main, e crea un <em>nuovo</em> SHA. D e E scompaiono — nascono D'' e E'' con parent diverso.
+                    </p>
+                    <div class="callout-pink">
+                        <span style="color:#ff168e;font-weight:600;">⚡ Risultato</span><br>
+                        <span style="color:rgba(242,242,242,0.7);font-size:0.88rem;">History lineare. Ogni commit di feature sembra scritto dopo tutti i commit di main. Fast-forward merge possibile.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 7 · MERGE VS REBASE — CONFRONTO
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="7">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:300px;height:300px;top:-60px;right:-60px;background:#01468a;opacity:0.09;"></div>
+            <div class="blob" style="width:200px;height:200px;bottom:-50px;left:-40px;background:#6284bb;opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">CONFRONTO</p>
+            <h2 class="reveal">Merge vs Rebase</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
+            <table class="cmp-table reveal">
+                <thead>
+                    <tr>
+                        <th style="width:30%;">Criterio</th>
+                        <th>git merge</th>
+                        <th>git rebase</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="color:#f2f2f2;font-weight:500;">History shape</td>
+                        <td><span class="tag-warn">Non-lineare</span> — grafo con biforcazioni</td>
+                        <td><span class="tag-good">Lineare</span> — sequenza pulita</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#f2f2f2;font-weight:500;">SHA dei commit</td>
+                        <td><span class="tag-good">Invariati</span></td>
+                        <td><span class="tag-warn">Riscritti</span> — nuovi SHA</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#f2f2f2;font-weight:500;">Sicurezza branch shared</td>
+                        <td><span class="tag-good">Sempre sicuro</span></td>
+                        <td><span class="tag-bad">Pericoloso</span> — mai su branch condivisi</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#f2f2f2;font-weight:500;">Leggibilità log</td>
+                        <td><span class="tag-bad">Rumoroso</span> con merge commits</td>
+                        <td><span class="tag-good">Pulito</span> e narrativo</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#f2f2f2;font-weight:500;">git bisect</td>
+                        <td><span class="tag-warn">Più complesso</span></td>
+                        <td><span class="tag-good">Preciso</span> — ogni commit è atomico</td>
+                    </tr>
+                    <tr>
+                        <td style="color:#f2f2f2;font-weight:500;">Preserva contesto</td>
+                        <td><span class="tag-good">Sì</span> — timestamp e branch origin</td>
+                        <td><span class="tag-warn">Parziale</span> — timestamp originale, parent nuovo</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 8 · INTERACTIVE REBASE
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="8">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:320px;height:320px;top:-65px;right:-65px;background:#ff168e;opacity:0.11;"></div>
+            <div class="blob" style="width:200px;height:200px;bottom:-50px;left:-40px;background:#01468a;opacity:0.09;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">INTERACTIVE REBASE</p>
+            <h2 class="reveal">git rebase -i: il chirurgo della history</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;">
+                <div class="reveal">
+                    <div class="code-block">
+                        <span class="label">apri gli ultimi 4 commit</span>
+                        <span class="kw">$</span> git rebase -i HEAD~4<br>
+                        <br>
+                        <span class="cm"># Nel tuo editor:</span><br>
+                        <span class="ok">pick</span>  a1b2c3 feat: aggiungi auth<br>
+                        <span class="kw">squash</span> d4e5f6 fix typo<br>
+                        <span class="kw">squash</span> 7a8b9c WIP<br>
+                        <span class="ok">reword</span> 0d1e2f fix: aggiorna JWT<br>
+                    </div>
+                </div>
+                <div class="reveal">
+                    <p style="font-size:0.88rem;color:rgba(242,242,242,0.75);margin-bottom:0.8rem;line-height:1.6;">I comandi disponibili:</p>
+                    <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                        <div class="glass-card" style="padding:0.6rem 0.9rem;display:flex;gap:0.8rem;align-items:center;">
+                            <code style="color:#4cde9a;font-size:0.82rem;min-width:52px;">pick</code>
+                            <span style="color:rgba(242,242,242,0.7);font-size:0.85rem;">Usa il commit così com'è</span>
+                        </div>
+                        <div class="glass-card" style="padding:0.6rem 0.9rem;display:flex;gap:0.8rem;align-items:center;">
+                            <code style="color:#ff168e;font-size:0.82rem;min-width:52px;">squash</code>
+                            <span style="color:rgba(242,242,242,0.7);font-size:0.85rem;">Fondilo nel commit precedente</span>
+                        </div>
+                        <div class="glass-card" style="padding:0.6rem 0.9rem;display:flex;gap:0.8rem;align-items:center;">
+                            <code style="color:#6284bb;font-size:0.82rem;min-width:52px;">reword</code>
+                            <span style="color:rgba(242,242,242,0.7);font-size:0.85rem;">Cambia solo il messaggio</span>
+                        </div>
+                        <div class="glass-card" style="padding:0.6rem 0.9rem;display:flex;gap:0.8rem;align-items:center;">
+                            <code style="color:#f5c842;font-size:0.82rem;min-width:52px;">edit</code>
+                            <span style="color:rgba(242,242,242,0.7);font-size:0.85rem;">Metti in pausa per amend</span>
+                        </div>
+                        <div class="glass-card" style="padding:0.6rem 0.9rem;display:flex;gap:0.8rem;align-items:center;">
+                            <code style="color:#ff6bb5;font-size:0.82rem;min-width:52px;">drop</code>
+                            <span style="color:rgba(242,242,242,0.7);font-size:0.85rem;">Elimina il commit dalla history</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 9 · SQUASH WORKFLOW
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="9">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:280px;height:280px;top:-55px;right:-55px;background:#6284bb;opacity:0.09;"></div>
+            <div class="blob" style="width:180px;height:180px;bottom:-40px;left:-30px;background:#ff168e;opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">SQUASH</p>
+            <h2 class="reveal">Pulisci i commit prima del merge</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;align-items:start;">
+                <div class="reveal">
+                    <p style="font-size:0.85rem;color:#ff168e;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.6rem;">Prima</p>
+                    <div class="code-block">
+                        D - feat: init login form<br>
+                        E - fix: rimuovi console.log<br>
+                        F - fix: typo username<br>
+                        G - WIP: quasi funziona<br>
+                        H - fix: ora funziona davvero<br>
+                    </div>
+                </div>
+                <div class="reveal">
+                    <p style="font-size:0.85rem;color:#4cde9a;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.6rem;">Dopo squash in D</p>
+                    <div class="code-block">
+                        <span class="ok">D''</span> - feat: aggiungi login form<br>
+                        <br>
+                        <span class="cm"># Un solo commit atomico,</span><br>
+                        <span class="cm"># messaggio chiaro,</span><br>
+                        <span class="cm"># zero rumore.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="callout-ok reveal" style="margin-top:1.2rem;">
+                <span style="color:#4cde9a;font-weight:600;">Best practice</span><br>
+                <span style="color:rgba(242,242,242,0.7);font-size:0.88rem;">Fai squash su feature branch <em>prima</em> di aprire la PR. Il reviewer vede una storia pulita, non il tuo processo interno.</span>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 10 · GOLDEN RULE
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="10">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:400px;height:400px;top:-100px;right:-80px;background:#ff168e;opacity:0.13;"></div>
+            <div class="blob" style="width:250px;height:250px;bottom:-60px;left:-50px;background:#01468a;opacity:0.10;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">GOLDEN RULE</p>
+            <h2 class="reveal">Non fare mai rebase di un branch pubblico</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
+            <div class="callout-warn reveal" style="margin-bottom:1.4rem;font-size:1rem;">
+                <strong style="color:#f5c842;">La regola d'oro del rebase:</strong><br>
+                <span style="color:rgba(242,242,242,0.8);">
+                    Non riscrivere mai commit che altri sviluppatori potrebbero aver già scaricato.
+                    Se qualcuno ha basato il proprio lavoro sui tuoi SHA e tu li cambi, la sua history diverge.
+                </span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;">
+                <div class="glass-card reveal" style="padding:1.3rem;">
+                    <p style="color:#4cde9a;font-weight:600;margin-bottom:0.5rem;">✓ Sicuro fare rebase</p>
+                    <ul style="color:rgba(242,242,242,0.7);font-size:0.88rem;line-height:1.7;padding-left:1.2rem;">
+                        <li>Feature branch locale non ancora pushato</li>
+                        <li>Branch di cui sei l'unico autore</li>
+                        <li>Branch appena pushato e non ancora condiviso</li>
+                    </ul>
+                </div>
+                <div class="glass-card reveal" style="padding:1.3rem;">
+                    <p style="color:#ff168e;font-weight:600;margin-bottom:0.5rem;">✗ Non fare mai rebase</p>
+                    <ul style="color:rgba(242,242,242,0.7);font-size:0.88rem;line-height:1.7;padding-left:1.2rem;">
+                        <li>main / develop / release branch</li>
+                        <li>Qualsiasi branch su cui altri stanno lavorando</li>
+                        <li>Branch da cui altri hanno già fatto pull</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 11 · FORCE PUSH
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="11">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:300px;height:300px;top:-60px;right:-60px;background:#f5c842;opacity:0.06;"></div>
+            <div class="blob" style="width:200px;height:200px;bottom:-50px;left:-40px;background:#ff168e;opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">FORCE PUSH</p>
+            <h2 class="reveal">--force-with-lease, non --force</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;">
+                <div class="reveal">
+                    <p style="color:rgba(242,242,242,0.75);font-size:0.92rem;line-height:1.65;margin-bottom:1rem;">
+                        Dopo un rebase i SHA cambiano: serve un force push per aggiornare il remote. Ma <code style="color:#ff168e;">--force</code> è cieco — sovrascrive qualsiasi commit sul remote, inclusi quelli che altri hanno pushato mentre lavoravi.
+                    </p>
+                    <div class="callout-warn">
+                        <span style="color:#f5c842;font-weight:600;">⚠ --force distrugge silenziosamente</span><br>
+                        <span style="color:rgba(242,242,242,0.7);font-size:0.85rem;">Se il collega ha pushato su quel branch, il suo lavoro sparisce senza errori.
+                        </span>
+                    </div>
+                </div>
+                <div class="reveal">
+                    <div class="code-block" style="margin-bottom:1rem;">
+                        <span class="label">❌ pericoloso</span>
+                        <span class="kw">$</span> git push --force origin feature/x<br>
+                        <br>
+                        <span class="label">✓ sicuro</span>
+                        <span class="ok">$</span> git push --force-with-lease origin feature/x
+                    </div>
+                    <div class="callout-ok">
+                        <span style="color:#4cde9a;font-weight:600;">--force-with-lease</span><br>
+                        <span style="color:rgba(242,242,242,0.7);font-size:0.85rem;">Controlla che il tuo ref locale del remote coincida con il remote reale. Se qualcuno ha pushato nel frattempo, fallisce — proteggendoti.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 12 · WORKFLOW TEAM
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="12">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:280px;height:280px;top:-50px;right:-50px;background:#01468a;opacity:0.10;"></div>
+            <div class="blob" style="width:180px;height:180px;bottom:-40px;left:-30px;background:#ff168e;opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">TEAM WORKFLOW</p>
+            <h2 class="reveal">Il ciclo rebase nel lavoro quotidiano</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
+            <div style="display:flex;flex-direction:column;gap:0.7rem;">
+                <div class="glass-card reveal" style="padding:0.9rem 1.2rem;display:flex;align-items:center;gap:1.2rem;">
+                    <span style="color:#ff168e;font-weight:700;font-size:1.1rem;min-width:1.8rem;">1</span>
+                    <div><code style="color:#4cde9a;font-size:0.88rem;">git checkout -b feature/xyz</code> <span style="color:rgba(242,242,242,0.6);font-size:0.85rem;">— crea branch locale da main aggiornato</span></div>
+                </div>
+                <div class="glass-card reveal" style="padding:0.9rem 1.2rem;display:flex;align-items:center;gap:1.2rem;">
+                    <span style="color:#ff168e;font-weight:700;font-size:1.1rem;min-width:1.8rem;">2</span>
+                    <div>Sviluppa liberamente, commit anche sporchi — sono tuoi</div>
+                </div>
+                <div class="glass-card reveal" style="padding:0.9rem 1.2rem;display:flex;align-items:center;gap:1.2rem;">
+                    <span style="color:#ff168e;font-weight:700;font-size:1.1rem;min-width:1.8rem;">3</span>
+                    <div><code style="color:#6284bb;font-size:0.88rem;">git fetch origin && git rebase origin/main</code> <span style="color:rgba(242,242,242,0.6);font-size:0.85rem;">— allineati a main</span></div>
+                </div>
+                <div class="glass-card reveal" style="padding:0.9rem 1.2rem;display:flex;align-items:center;gap:1.2rem;">
+                    <span style="color:#ff168e;font-weight:700;font-size:1.1rem;min-width:1.8rem;">4</span>
+                    <div><code style="color:#6284bb;font-size:0.88rem;">git rebase -i origin/main</code> <span style="color:rgba(242,242,242,0.6);font-size:0.85rem;">— squash + reword: prepara PR pulita</span></div>
+                </div>
+                <div class="glass-card reveal" style="padding:0.9rem 1.2rem;display:flex;align-items:center;gap:1.2rem;">
+                    <span style="color:#ff168e;font-weight:700;font-size:1.1rem;min-width:1.8rem;">5</span>
+                    <div><code style="color:#4cde9a;font-size:0.88rem;">git push --force-with-lease</code> <span style="color:rgba(242,242,242,0.6);font-size:0.85rem;">— aggiorna il remote in sicurezza</span></div>
+                </div>
+                <div class="glass-card reveal" style="padding:0.9rem 1.2rem;display:flex;align-items:center;gap:1.2rem;">
+                    <span style="color:#ff168e;font-weight:700;font-size:1.1rem;min-width:1.8rem;">6</span>
+                    <div>PR approvata → <strong>fast-forward merge</strong> su main — nessun merge commit</div>
+                </div>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 13 · CONFLITTI DURANTE REBASE
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="13">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:320px;height:320px;top:-65px;right:-65px;background:#f5c842;opacity:0.06;"></div>
+            <div class="blob" style="width:200px;height:200px;bottom:-50px;left:-40px;background:#ff168e;opacity:0.09;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">CONFLITTI</p>
+            <h2 class="reveal">Il rebase si ferma — non paniccare</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;">
+                <div class="reveal">
+                    <div class="code-block" style="margin-bottom:0.9rem;">
+                        <span class="label">il rebase si ferma su conflitto</span>
+                        CONFLICT (content): Merge conflict in auth.ts<br>
+                        error: could not apply <span class="wa">d4e5f6</span>...<br>
+                        <span class="cm"># Risolvi → poi:</span><br>
+                        <span class="kw">$</span> git add auth.ts<br>
+                        <span class="ok">$</span> git rebase --continue<br>
+                    </div>
+                    <div class="code-block">
+                        <span class="label">oppure, se vuoi annullare tutto</span>
+                        <span class="kw">$</span> git rebase --abort<br>
+                        <span class="cm"># Torni esattamente dove eri prima</span>
+                    </div>
+                </div>
+                <div class="reveal">
+                    <p style="color:rgba(242,242,242,0.75);font-size:0.9rem;line-height:1.65;margin-bottom:0.9rem;">
+                        Con il rebase i conflitti appaiono <strong style="color:#f2f2f2;">commit per commit</strong>: ogni stop è un conflitto su un commit specifico — più chirurgico di un merge che accorpa tutto.
+                    </p>
+                    <div class="callout-ok">
+                        <span style="color:#4cde9a;font-weight:600;">Tip: usa git rerere</span><br>
+                        <span style="color:rgba(242,242,242,0.7);font-size:0.85rem;">
+                            <code>git config --global rerere.enabled true</code><br>
+                            Git memorizza come hai risolto ogni conflitto e lo riapplica automaticamente nei rebase successivi sullo stesso codice.
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 14 · PITFALL COMUNI
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="14">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:300px;height:300px;top:-60px;right:-60px;background:#ff168e;opacity:0.10;"></div>
+            <div class="blob" style="width:200px;height:200px;bottom:-50px;left:-40px;background:#01468a;opacity:0.09;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">PITFALL</p>
+            <h2 class="reveal">Errori classici e come evitarli</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.5rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                <div class="glass-card reveal" style="padding:1.1rem 1.3rem;">
+                    <p style="color:#ff168e;font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">🔴 Rebase di main</p>
+                    <p style="color:rgba(242,242,242,0.7);font-size:0.85rem;line-height:1.55;">Riscrivere main rompe la history di tutti. Proteggilo con branch protection rules su GitHub.</p>
+                </div>
+                <div class="glass-card reveal" style="padding:1.1rem 1.3rem;">
+                    <p style="color:#ff168e;font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">🔴 Squash di merge commit</p>
+                    <p style="color:rgba(242,242,242,0.7);font-size:0.85rem;line-height:1.55;">Non fare squash di commit che includono merge. Usa <code style="color:#6284bb;">rebase --rebase-merges</code> se la struttura serve.</p>
+                </div>
+                <div class="glass-card reveal" style="padding:1.1rem 1.3rem;">
+                    <p style="color:#f5c842;font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">🟡 Perdere commit dopo abort</p>
+                    <p style="color:rgba(242,242,242,0.7);font-size:0.85rem;line-height:1.55;">I commit "persi" sono nel reflog per 90 giorni: <code style="color:#6284bb;">git reflog</code> + <code style="color:#6284bb;">git checkout SHA</code>.</p>
+                </div>
+                <div class="glass-card reveal" style="padding:1.1rem 1.3rem;">
+                    <p style="color:#f5c842;font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">🟡 Tags che puntano ai vecchi SHA</p>
+                    <p style="color:rgba(242,242,242,0.7);font-size:0.85rem;line-height:1.55;">Dopo un rebase, i tag annotati continuano a puntare ai vecchi commit. Non fare rebase di commit già taggati.</p>
+                </div>
+                <div class="glass-card reveal" style="padding:1.1rem 1.3rem;">
+                    <p style="color:#f5c842;font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">🟡 Rebase con submodules</p>
+                    <p style="color:rgba(242,242,242,0.7);font-size:0.85rem;line-height:1.55;">I submodule non vengono aggiornati automaticamente. Usa <code style="color:#6284bb;">--recurse-submodules</code>.</p>
+                </div>
+                <div class="glass-card reveal" style="padding:1.1rem 1.3rem;">
+                    <p style="color:#4cde9a;font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">✓ Recovery universale</p>
+                    <p style="color:rgba(242,242,242,0.7);font-size:0.85rem;line-height:1.55;"><code style="color:#6284bb;">git reflog</code> registra ogni movimento di HEAD. Puoi tornare a qualsiasi stato degli ultimi 90 giorni.</p>
+                </div>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 15 · REBASE VS MERGE: QUANDO USARE COSA
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="15">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:320px;height:320px;top:-65px;right:-65px;background:#6284bb;opacity:0.09;"></div>
+            <div class="blob" style="width:200px;height:200px;bottom:-50px;left:-40px;background:#ff168e;opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">DECISIONE</p>
+            <h2 class="reveal">Quando usare cosa — regole pratiche</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.5rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;">
+                <div class="reveal">
+                    <p style="color:#ff168e;font-weight:600;font-size:0.85rem;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.7rem;">Usa Rebase quando…</p>
+                    <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                        <div class="glass-card" style="padding:0.7rem 1rem;font-size:0.88rem;color:rgba(242,242,242,0.8);">Stai allineando il tuo feature branch a main prima della PR</div>
+                        <div class="glass-card" style="padding:0.7rem 1rem;font-size:0.88rem;color:rgba(242,242,242,0.8);">Vuoi pulire i commit WIP prima che li vedano altri</div>
+                        <div class="glass-card" style="padding:0.7rem 1rem;font-size:0.88rem;color:rgba(242,242,242,0.8);">Vuoi fare fast-forward merge su main senza merge commit</div>
+                        <div class="glass-card" style="padding:0.7rem 1rem;font-size:0.88rem;color:rgba(242,242,242,0.8);">Hai bisogno di <code style="color:#6284bb;">git bisect</code> efficace su bug regressions</div>
+                    </div>
+                </div>
+                <div class="reveal">
+                    <p style="color:#6284bb;font-weight:600;font-size:0.85rem;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.7rem;">Usa Merge quando…</p>
+                    <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                        <div class="glass-card" style="padding:0.7rem 1rem;font-size:0.88rem;color:rgba(242,242,242,0.8);">Vuoi preservare l'evidenza di una collaborazione parallela</div>
+                        <div class="glass-card" style="padding:0.7rem 1rem;font-size:0.88rem;color:rgba(242,242,242,0.8);">Stai integrando un release branch o hotfix su main</div>
+                        <div class="glass-card" style="padding:0.7rem 1rem;font-size:0.88rem;color:rgba(242,242,242,0.8);">Il branch è condiviso con altri sviluppatori</div>
+                        <div class="glass-card" style="padding:0.7rem 1rem;font-size:0.88rem;color:rgba(242,242,242,0.8);">Vuoi un audit trail chiaro di quando le feature sono entrate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 16 · QUICK REFERENCE
+         ══════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="16">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:300px;height:300px;top:-60px;right:-60px;background:#01468a;opacity:0.10;"></div>
+            <div class="blob" style="width:200px;height:200px;bottom:-50px;left:-40px;background:#ff168e;opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="eyebrow reveal">CHEAT SHEET</p>
+            <h2 class="reveal">Comandi essenziali</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.5rem;"></span>
+            <div class="code-block reveal" style="columns:2;column-gap:2rem;">
+                <span class="label" style="column-span:all;">rebase & interactive</span>
+                <span class="cm"># allinea branch a main</span><br>
+                <span class="kw">$</span> git rebase main<br>
+                <br>
+                <span class="cm"># rebase interattivo ultimi N commit</span><br>
+                <span class="kw">$</span> git rebase -i HEAD~N<br>
+                <br>
+                <span class="cm"># continua dopo conflitto</span><br>
+                <span class="ok">$</span> git rebase --continue<br>
+                <br>
+                <span class="cm"># annulla tutto</span><br>
+                <span class="kw">$</span> git rebase --abort<br>
+                <br>
+                <span class="cm"># force push sicuro</span><br>
+                <span class="ok">$</span> git push --force-with-lease<br>
+                <br>
+                <span class="cm"># abilita rerere</span><br>
+                <span class="ok">$</span> git config --global rerere.enabled true<br>
+                <br>
+                <span class="cm"># recupera commit "persi"</span><br>
+                <span class="ok">$</span> git reflog<br>
+                <span class="ok">$</span> git checkout &lt;SHA&gt;<br>
+            </div>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ══════════════════════════════════
+         SLIDE 17 · CLOSING
+         ══════════════════════════════════ -->
+    <div class="slide slide-closing" data-slide="17">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:500px;height:500px;top:-130px;right:-100px;background:#ff168e;opacity:0.13;"></div>
+            <div class="blob" style="width:350px;height:350px;bottom:-90px;left:-70px;background:#01468a;opacity:0.14;"></div>
+            <div class="blob" style="width:200px;height:200px;top:35%;left:10%;background:#6284bb;opacity:0.10;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1;width:100%;height:100%;"></canvas>
+        <div class="content">
+            <p class="reveal" style="font-size:clamp(0.75rem,1vw,0.85rem);letter-spacing:0.20em;text-transform:uppercase;color:#ff168e;font-weight:600;margin-bottom:1.2rem;">CORSO MSYS GIT · 2026</p>
+            <h2 class="gradient-text reveal">La history è documentazione.</h2>
+            <h2 class="reveal" style="font-size:clamp(1.4rem,3vw,2.6rem);font-weight:400;color:rgba(242,242,242,0.65);margin-top:0.5rem;margin-bottom:1.6rem;">Trattala con la stessa cura del codice.</h2>
+            <span class="lodestar-line-gradient reveal" style="width:80px;display:block;margin:0 auto 1.8rem;"></span>
+            <p class="reveal" style="font-size:clamp(0.9rem,1.3vw,1.1rem);color:rgba(242,242,242,0.45);letter-spacing:0.04em;">lodestar.eu · info@lodestar.eu</p>
+        </div>
+        <div class="brand-bar"></div>
+    </div>
+
+</div><!-- /deck -->
+
+<!-- NAVIGATION -->
+<div class="nav-controls">
+    <button class="nav-btn" onclick="changeSlide(-1)" aria-label="Slide precedente">&#8249;</button>
+    <div class="slide-dots" id="dots"></div>
+    <button class="nav-btn" onclick="changeSlide(1)" aria-label="Slide successiva">&#8250;</button>
+    <span class="slide-counter" id="counter">1 / 17</span>
+</div>
+
+<script>
+let current = 1;
+const total = document.querySelectorAll('.slide').length;
+const dotsContainer = document.getElementById('dots');
+const counter = document.getElementById('counter');
+
+for (let i = 1; i <= total; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === 1 ? ' active' : '');
+    dot.onclick = () => goToSlide(i);
+    dotsContainer.appendChild(dot);
+}
+
+function goToSlide(n) {
+    const prev = document.querySelector('.slide.active');
+    const next = document.querySelector(`.slide[data-slide="${n}"]`);
+    if (prev) prev.classList.remove('active');
+    if (next) { next.classList.add('active'); animateSlide(next); }
+    current = n; updateNav();
+}
+function changeSlide(dir) { let n = current + dir; if (n < 1) n = total; if (n > total) n = 1; goToSlide(n); }
+function updateNav() {
+    document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i + 1 === current));
+    counter.textContent = current + ' / ' + total;
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); changeSlide(1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); changeSlide(-1); }
+});
+let touchStartX = 0;
+document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', (e) => { const diff = touchStartX - e.changedTouches[0].clientX; if (Math.abs(diff) > 50) changeSlide(diff > 0 ? 1 : -1); });
+
+function animateSlide(slide) {
+    slide.querySelectorAll('.reveal').forEach((el, i) => {
+        el.style.transition = 'none';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(18px)';
+        el.offsetHeight;
+        const delay = i * 0.09;
+        el.style.transition = `opacity 0.38s ease ${delay}s, transform 0.38s ease ${delay}s`;
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+    });
+}
+
+function initParticles(canvas, opts) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth || window.innerWidth;
+    canvas.height = canvas.offsetHeight || window.innerHeight;
+    const count = opts.count || 45;
+    let mx = -1000, my = -1000;
+    const particles = Array.from({ length: count }, () => ({
+        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.28, vy: (Math.random() - 0.5) * 0.28,
+        size: Math.random() * 2.2 + 0.7,
+        alpha: Math.random() * 0.3 + 0.08,
+        color: Math.random() > 0.5 ? '255,22,142' : '98,132,187'
+    }));
+    canvas.addEventListener('mousemove', (e) => { const r = canvas.getBoundingClientRect(); mx = e.clientX - r.left; my = e.clientY - r.top; });
+    canvas.addEventListener('mouseleave', () => { mx = -1000; my = -1000; });
+    (function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+            const dx = p.x - mx, dy = p.y - my, dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 110) { const f = (110 - dist) / 110 * 1.8; p.vx += (dx/dist)*f*0.08; p.vy += (dy/dist)*f*0.08; }
+            p.vx *= 0.98; p.vy *= 0.98;
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
+            if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(${p.color},${p.alpha})`; ctx.fill();
+        });
+        requestAnimationFrame(animate);
+    })();
+}
+document.querySelectorAll('.particle-canvas').forEach(c => initParticles(c, { count: 48 }));
+
+document.addEventListener('mousemove', (e) => {
+    const s = document.getElementById('spotlight');
+    if (s) s.style.background = `radial-gradient(550px circle at ${e.clientX}px ${e.clientY}px, rgba(255,22,142,0.055), transparent 40%)`;
+});
+
+(function() {
+    let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
+    const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+    document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+    (function tick() {
+        const ox = (mouseX - cx) / cx, oy = (mouseY - cy) / cy;
+        document.querySelectorAll('.deco-shape').forEach(s => {
+            const sp = parseFloat(s.dataset.speed) || 0.03;
+            s.style.transform = `translate(${ox*sp*100}px,${oy*sp*100}px)`;
+        });
+        requestAnimationFrame(tick);
+    })();
+})();
+
+try { animateSlide(document.querySelector('.slide.active')); } catch(e) { console.warn(e); }
+</script>
+</body>
+</html>
