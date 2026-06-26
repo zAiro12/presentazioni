@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="slides-format" content="viewport">
+    <title>Lodestar — Presentazione</title>
+
+    <!-- Futura PT via Google Fonts (closest available: Jost is the best free alternative; using it as fallback) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+    <!-- Tailwind v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <style type="text/tailwindcss">
+        @theme {
+            /* ── Lodestar Brand Palette ── */
+            --color-bg:             #2a3142;   /* gunmetal — dark slide bg */
+            --color-bg-deep:        #1e2535;   /* darker gunmetal variant */
+            --color-surface:        #353d52;   /* slightly lighter gunmetal */
+            --color-text:           #f2f2f2;   /* frost grey — main text on dark */
+            --color-text-secondary: rgba(242,242,242,0.75);
+            --color-text-muted:     rgba(242,242,242,0.45);
+
+            /* Brand accent trio (the official gradient) */
+            --color-accent-1:  #ff168e;   /* deep pink */
+            --color-accent-2:  #6284bb;   /* glaucous */
+            --color-accent-3:  #01468a;   /* midnight blue */
+
+            /* Specific brand colors */
+            --color-anthracite:    #3c3c3b;
+            --color-midnight:      #01468a;
+            --color-glaucous:      #6284bb;
+            --color-frost:         #f2f2f2;
+            --color-gunmetal:      #2a3142;
+            --color-deep-pink:     #ff168e;
+
+            /* Glass / borders */
+            --color-glass-bg:      rgba(255,255,255,0.05);
+            --color-glass-border:  rgba(255,255,255,0.10);
+            --color-vignette:      rgba(0,0,0,0.35);
+
+            /* Typography — Futura PT equivalent via Jost */
+            --font-display: 'Jost', 'Futura PT', 'Century Gothic', sans-serif;
+            --font-body:    'Jost', 'Futura PT', 'Century Gothic', sans-serif;
+        }
+    </style>
+
+    <style>
+        /* ══════════════════════════════════════════════════
+           LODESTAR DESIGN TOKENS (pre-Tailwind load safety)
+           ══════════════════════════════════════════════════ */
+        :root {
+            --color-bg: #2a3142;
+            --color-text: #f2f2f2;
+            --glow-color-rgb: 255,22,142;   /* deep pink glow */
+            --pink-rgb: 255,22,142;
+            --blue-rgb: 1,70,138;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body {
+            background: var(--color-bg);
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+        }
+        body {
+            font-family: 'Jost', 'Futura PT', 'Century Gothic', sans-serif;
+            color: #f2f2f2;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* ══════════════════════════════════════════════════
+           DECK NAVIGATION — DO NOT MODIFY
+           ══════════════════════════════════════════════════ */
+        .deck { width: 100vw; height: 100vh; position: relative; }
+        .slide {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: var(--color-bg);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            opacity: 0; transform: scale(0.97);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            pointer-events: none; overflow: hidden;
+        }
+        .slide.active { opacity: 1; transform: scale(1); pointer-events: all; }
+        .slide > .content {
+            position: relative; z-index: 2;
+            width: 100%; max-width: 1100px;
+            padding: clamp(1.5rem, 4vw, 4rem);
+        }
+        .reveal { opacity: 0; transform: translateY(18px); }
+
+        /* ── Navigation controls ── */
+        .nav-controls {
+            position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; gap: 16px; z-index: 100;
+            background: rgba(42,49,66,0.85);
+            backdrop-filter: blur(12px);
+            padding: 10px 24px; border-radius: 40px;
+            border: 1px solid rgba(98,132,187,0.25);
+        }
+        .nav-btn {
+            width: 38px; height: 38px; border: none;
+            background: rgba(255,255,255,0.06);
+            color: #ff168e; border-radius: 50%;
+            font-size: 1.25rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.25s;
+        }
+        .nav-btn:hover { background: rgba(255,22,142,0.15); }
+        .slide-dots { display: flex; gap: 7px; }
+        .slide-dots .dot {
+            width: 9px; height: 9px; border-radius: 50%;
+            background: rgba(242,242,242,0.25); cursor: pointer;
+            transition: background 0.3s, transform 0.3s;
+        }
+        .slide-dots .dot.active { background: #ff168e; transform: scale(1.35); }
+        .slide-counter { font-size: 0.78rem; color: rgba(242,242,242,0.5); min-width: 36px; text-align: center; letter-spacing: 0.05em; }
+
+        /* ══════════════════════════════════════════════════
+           LODESTAR VISUAL LANGUAGE
+           ══════════════════════════════════════════════════ */
+
+        /* ── Gradient mesh blobs ── */
+        @keyframes float-slow {
+            0%   { transform: translate(0,0) scale(1); }
+            25%  { transform: translate(55px,-45px) scale(1.10); }
+            50%  { transform: translate(-35px,38px) scale(0.92); }
+            75%  { transform: translate(45px,18px) scale(1.07); }
+            100% { transform: translate(0,0) scale(1); }
+        }
+        @keyframes float-drift {
+            0%   { transform: translate(0,0) scale(1) rotate(0deg); }
+            33%  { transform: translate(-45px,-55px) scale(1.13) rotate(2deg); }
+            66%  { transform: translate(38px,28px) scale(0.88) rotate(-2deg); }
+            100% { transform: translate(0,0) scale(1) rotate(0deg); }
+        }
+        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+        .gradient-mesh { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+        .blob { position: absolute; border-radius: 50%; filter: blur(80px); animation: float-slow 12s ease-in-out infinite; }
+        .blob:nth-child(2) { animation: float-drift 16s ease-in-out infinite; }
+        .blob:nth-child(3) { animation: float-slow 20s ease-in-out infinite reverse; }
+
+        /* ── Lodestar signature line (deep pink, rounded) ── */
+        .lodestar-line {
+            display: block; height: 3px; border-radius: 9999px;
+            background: #ff168e; margin: 0;
+        }
+        .lodestar-line-gradient {
+            display: block; height: 3px; border-radius: 9999px;
+            background: linear-gradient(90deg, #01468a, #6284bb, #ff168e);
+        }
+
+        /* ── Cinematic depth: noise + vignette ── */
+        .slide::before {
+            content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            background-repeat: repeat; background-size: 256px 256px; opacity: 0.025; mix-blend-mode: overlay;
+        }
+        .slide::after {
+            content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.35) 100%);
+        }
+
+        /* ── Glow effects ── */
+        .text-glow { text-shadow: 0 0 20px rgba(var(--glow-color-rgb),0.55), 0 0 40px rgba(var(--glow-color-rgb),0.22); }
+        @keyframes glow-pulse {
+            0%,100% { text-shadow: 0 0 20px rgba(255,22,142,0.55), 0 0 40px rgba(255,22,142,0.22); }
+            50%      { text-shadow: 0 0 30px rgba(255,22,142,0.85), 0 0 60px rgba(255,22,142,0.35); }
+        }
+        .glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+
+        /* ── Glass card ── */
+        .glass-card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 14px;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .glass-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(255,22,142,0.12); }
+
+        /* ── Gradient text utility ── */
+        .gradient-text {
+            background: linear-gradient(135deg, #ff168e, #6284bb, #01468a);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent; color: transparent;
+        }
+
+        /* ── Bottom bar (Lodestar brand bar) ── */
+        .brand-bar {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: 5px; z-index: 10;
+            background: linear-gradient(90deg, #01468a 0%, #6284bb 50%, #ff168e 100%);
+        }
+
+        /* ── Left accent bar (slide decoration) ── */
+        .accent-border-left {
+            border-left: 4px solid #ff168e;
+            border-radius: 0 8px 8px 0;
+        }
+
+        /* ── Reduced motion ── */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+        }
+
+        /* ── Logo wordmark style ── */
+        .logo-mark { font-family: 'Jost','Futura PT','Century Gothic',sans-serif; font-weight: 600; letter-spacing: 0.02em; }
+
+        /* ══════════════════════════════════════════════════
+           SLIDE-SPECIFIC STYLES
+           ══════════════════════════════════════════════════ */
+
+        /* Title slide */
+        .slide-title .content { text-align: center; }
+        .slide-title h1 {
+            font-size: clamp(2.8rem, 6vw, 5.5rem);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+        .slide-title .subtitle {
+            font-size: clamp(0.85rem, 1.4vw, 1.1rem);
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(242,242,242,0.55);
+            margin-top: 1.2rem;
+        }
+        .slide-title .logo-hero {
+            animation: float 3.5s ease-in-out infinite;
+            margin-bottom: 2.5rem;
+            display: inline-block;
+        }
+
+        /* Content slide heading */
+        .slide-content h2 {
+            font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            margin-bottom: 0.4rem;
+        }
+        .slide-content .eyebrow {
+            font-size: clamp(0.7rem, 1vw, 0.85rem);
+            letter-spacing: 0.20em;
+            text-transform: uppercase;
+            color: #ff168e;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        /* Closing slide */
+        .slide-closing .content { text-align: center; }
+        .slide-closing h2 {
+            font-size: clamp(2.2rem, 5vw, 4.5rem);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        /* Mouse spotlight */
+        .mouse-spotlight { position: fixed; inset: 0; z-index: 99; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<!-- Mouse spotlight overlay -->
+<div class="mouse-spotlight" id="spotlight"></div>
+
+<div class="deck">
+
+    <!-- ════════════════════════════════════════════════
+         SLIDE 1 · TITLE (template — customize per uso)
+         ════════════════════════════════════════════════ -->
+    <div class="slide slide-title active" data-slide="1">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:480px;height:480px;top:-120px;right:-80px;background:#ff168e;opacity:0.12;"></div>
+            <div class="blob" style="width:320px;height:320px;bottom:-80px;left:-60px;background:#01468a;opacity:0.14;"></div>
+            <div class="blob" style="width:200px;height:200px;top:38%;left:12%;background:#6284bb;opacity:0.10;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1;width:100%;height:100%;"></canvas>
+
+        <div class="content">
+            <!-- Lodestar logo SVG inline -->
+            <div class="logo-hero" style="margin-bottom:2.5rem;">
+                <svg width="200" viewBox="0 0 220 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Lodestar">
+                    <circle cx="28" cy="28" r="22" stroke="#f2f2f2" stroke-width="2.5" fill="none"/>
+                    <line x1="18" y1="18" x2="38" y2="38" stroke="#ff168e" stroke-width="2.8" stroke-linecap="round"/>
+                    <line x1="38" y1="18" x2="18" y2="38" stroke="#6284bb" stroke-width="2.8" stroke-linecap="round"/>
+                    <circle cx="28" cy="28" r="3.5" fill="#f2f2f2"/>
+                    <text x="62" y="36" fill="#f2f2f2" font-size="26" font-family="Jost,Futura PT,Century Gothic,sans-serif" font-weight="600">Lodestar</text>
+                </svg>
+            </div>
+
+            <h1 class="gradient-text reveal">Titolo Presentazione</h1>
+            <p class="subtitle reveal">Sottotitolo · Data · Autore</p>
+        </div>
+
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         SLIDE 2 · CONTENT (template — customize per uso)
+         ════════════════════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="2">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:300px;height:300px;top:-60px;right:-60px;background:#01468a;opacity:0.08;"></div>
+            <div class="blob" style="width:220px;height:220px;bottom:-50px;left:-40px;background:#ff168e;opacity:0.07;"></div>
+        </div>
+
+        <div class="content">
+            <p class="eyebrow reveal">SEZIONE</p>
+            <h2 class="reveal">Titolo della Slide</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.8rem;"></span>
+
+            <p class="reveal" style="font-size:clamp(1rem,1.6vw,1.25rem);color:rgba(242,242,242,0.75);max-width:68ch;line-height:1.65;">
+                Questo è il template vuoto. Aggiungi qui il contenuto della presentazione.
+                Utilizza la palette Lodestar e i componenti predefiniti per mantenere la coerenza visiva.
+            </p>
+        </div>
+
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         SLIDE 3 · CARDS GRID (template — 3 card layout)
+         ════════════════════════════════════════════════ -->
+    <div class="slide slide-content" data-slide="3">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:280px;height:280px;top:-50px;right:-50px;background:#6284bb;opacity:0.09;"></div>
+            <div class="blob" style="width:180px;height:180px;bottom:-40px;left:-30px;background:#ff168e;opacity:0.08;"></div>
+        </div>
+
+        <div class="content">
+            <p class="eyebrow reveal">SEZIONE</p>
+            <h2 class="reveal">Titolo della Slide</h2>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.8rem;"></span>
+
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;">
+                <div class="glass-card reveal" style="padding:1.75rem;">
+                    <div style="font-size:1.8rem;margin-bottom:0.9rem;">🔷</div>
+                    <h3 style="font-size:1.05rem;font-weight:600;margin-bottom:0.6rem;color:#f2f2f2;">Card Titolo</h3>
+                    <p style="font-size:0.9rem;color:rgba(242,242,242,0.65);line-height:1.55;">Descrizione breve del contenuto di questa card.</p>
+                </div>
+                <div class="glass-card reveal" style="padding:1.75rem;">
+                    <div style="font-size:1.8rem;margin-bottom:0.9rem;">🔶</div>
+                    <h3 style="font-size:1.05rem;font-weight:600;margin-bottom:0.6rem;color:#f2f2f2;">Card Titolo</h3>
+                    <p style="font-size:0.9rem;color:rgba(242,242,242,0.65);line-height:1.55;">Descrizione breve del contenuto di questa card.</p>
+                </div>
+                <div class="glass-card reveal" style="padding:1.75rem;">
+                    <div style="font-size:1.8rem;margin-bottom:0.9rem;">🔹</div>
+                    <h3 style="font-size:1.05rem;font-weight:600;margin-bottom:0.6rem;color:#f2f2f2;">Card Titolo</h3>
+                    <p style="font-size:0.9rem;color:rgba(242,242,242,0.65);line-height:1.55;">Descrizione breve del contenuto di questa card.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="brand-bar"></div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         SLIDE 4 · CLOSING
+         ════════════════════════════════════════════════ -->
+    <div class="slide slide-closing" data-slide="4">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:500px;height:500px;top:-130px;right:-100px;background:#ff168e;opacity:0.13;"></div>
+            <div class="blob" style="width:350px;height:350px;bottom:-90px;left:-70px;background:#01468a;opacity:0.14;"></div>
+            <div class="blob" style="width:200px;height:200px;top:35%;left:10%;background:#6284bb;opacity:0.10;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1;width:100%;height:100%;"></canvas>
+
+        <div class="content">
+            <p class="reveal" style="font-size:clamp(0.75rem,1vw,0.85rem);letter-spacing:0.20em;text-transform:uppercase;color:#ff168e;font-weight:600;margin-bottom:1.2rem;">IT'S TIME TO INNOVATE</p>
+            <h2 class="gradient-text reveal" style="font-size:clamp(2.5rem,5.5vw,4.8rem);font-weight:600;letter-spacing:-0.02em;margin-bottom:1.6rem;">Grazie.</h2>
+            <span class="lodestar-line-gradient reveal" style="width:80px;display:block;margin:0 auto 1.8rem;"></span>
+            <p class="reveal" style="font-size:clamp(0.9rem,1.3vw,1.1rem);color:rgba(242,242,242,0.55);letter-spacing:0.04em;">lodestar.eu · info@lodestar.eu</p>
+        </div>
+
+        <div class="brand-bar"></div>
+    </div>
+
+</div><!-- /deck -->
+
+<!-- ════════════════════════════════════════════════
+     NAVIGATION CONTROLS
+     ════════════════════════════════════════════════ -->
+<div class="nav-controls">
+    <button class="nav-btn" onclick="changeSlide(-1)" aria-label="Slide precedente">&#8249;</button>
+    <div class="slide-dots" id="dots"></div>
+    <button class="nav-btn" onclick="changeSlide(1)" aria-label="Slide successiva">&#8250;</button>
+    <span class="slide-counter" id="counter">1 / 4</span>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   DECK NAVIGATION + INTERACTIVITY
+   ══════════════════════════════════════════════════════════ */
+
+let current = 1;
+const total = document.querySelectorAll('.slide').length;
+const dotsContainer = document.getElementById('dots');
+const counter = document.getElementById('counter');
+
+for (let i = 1; i <= total; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === 1 ? ' active' : '');
+    dot.onclick = () => goToSlide(i);
+    dotsContainer.appendChild(dot);
+}
+
+function goToSlide(n) {
+    const prev = document.querySelector('.slide.active');
+    const next = document.querySelector(`.slide[data-slide="${n}"]`);
+    if (prev) prev.classList.remove('active');
+    if (next) { next.classList.add('active'); animateSlide(next); }
+    current = n; updateNav();
+}
+function changeSlide(dir) { let n = current + dir; if (n < 1) n = total; if (n > total) n = 1; goToSlide(n); }
+function updateNav() {
+    document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i + 1 === current));
+    counter.textContent = current + ' / ' + total;
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); changeSlide(1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); changeSlide(-1); }
+});
+let touchStartX = 0;
+document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', (e) => { const diff = touchStartX - e.changedTouches[0].clientX; if (Math.abs(diff) > 50) changeSlide(diff > 0 ? 1 : -1); });
+
+function animateSlide(slide) {
+    slide.querySelectorAll('.reveal').forEach((el, i) => {
+        el.style.transition = 'none';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(18px)';
+        el.offsetHeight;
+        const delay = i * 0.09;
+        el.style.transition = `opacity 0.38s ease ${delay}s, transform 0.38s ease ${delay}s`;
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+    });
+}
+
+function initParticles(canvas, opts) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth || window.innerWidth;
+    canvas.height = canvas.offsetHeight || window.innerHeight;
+    const count = opts.count || 45;
+    const interactive = opts.interactive !== false;
+    let mx = -1000, my = -1000;
+    const particles = Array.from({ length: count }, () => ({
+        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.28, vy: (Math.random() - 0.5) * 0.28,
+        size: Math.random() * 2.2 + 0.7,
+        alpha: Math.random() * 0.3 + 0.08,
+        color: Math.random() > 0.5 ? '255,22,142' : '98,132,187'
+    }));
+    if (interactive) {
+        canvas.addEventListener('mousemove', (e) => { const r = canvas.getBoundingClientRect(); mx = e.clientX - r.left; my = e.clientY - r.top; });
+        canvas.addEventListener('mouseleave', () => { mx = -1000; my = -1000; });
+    }
+    (function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+            if (interactive) {
+                const dx = p.x - mx, dy = p.y - my, dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 110) { const f = (110 - dist) / 110 * 1.8; p.vx += (dx/dist)*f*0.08; p.vy += (dy/dist)*f*0.08; }
+            }
+            p.vx *= 0.98; p.vy *= 0.98;
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
+            if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+            ctx.fillStyle = `rgba(${p.color},${p.alpha})`; ctx.fill();
+        });
+        requestAnimationFrame(animate);
+    })();
+}
+document.querySelectorAll('.particle-canvas').forEach(c => initParticles(c, { interactive: true, count: 48 }));
+
+document.addEventListener('mousemove', (e) => {
+    const s = document.getElementById('spotlight');
+    if (s) s.style.background = `radial-gradient(550px circle at ${e.clientX}px ${e.clientY}px, rgba(255,22,142,0.055), transparent 40%)`;
+});
+
+(function() {
+    let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
+    const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+    document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+    (function tick() {
+        const ox = (mouseX - cx) / cx, oy = (mouseY - cy) / cy;
+        document.querySelectorAll('.deco-shape').forEach(s => {
+            const sp = parseFloat(s.dataset.speed) || 0.03;
+            s.style.transform = `translate(${ox*sp*100}px,${oy*sp*100}px)`;
+        });
+        requestAnimationFrame(tick);
+    })();
+})();
+
+try { animateSlide(document.querySelector('.slide.active')); } catch(e) { console.warn(e); }
+</script>
+
+</body>
+</html>
