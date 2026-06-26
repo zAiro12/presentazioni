@@ -281,6 +281,39 @@
             border-left: 4px solid #ff168e; border-radius: 0 10px 10px 0;
             padding: 0.9rem 1.2rem;
         }
+
+        /* SVG Commit Graph */
+        .commit-graph-wrap {
+            background: rgba(0,0,0,0.30);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 1rem 0.5rem 0.8rem;
+            overflow: visible;
+        }
+        .commit-graph-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+        @keyframes draw-path {
+            from { stroke-dashoffset: 1000; }
+            to   { stroke-dashoffset: 0; }
+        }
+        @keyframes pop-in {
+            0%   { opacity: 0; r: 0; }
+            60%  { opacity: 1; r: 11; }
+            80%  { r: 9; }
+            100% { opacity: 1; r: 10; }
+        }
+        .cg-path {
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+        }
+        .cg-node {
+            opacity: 0;
+        }
+        .slide.active .cg-path  { animation: draw-path 0.7s ease forwards; }
+        .slide.active .cg-node  { animation: pop-in 0.35s ease forwards; }
     </style>
 </head>
 <body>
@@ -429,7 +462,7 @@
     </div>
 
     <!-- ══════════════════════════════════
-         SLIDE 5 · MERGE: COSA SUCCEDE
+         SLIDE 5 · MERGE: COSA SUCCEDE  (SVG graph)
          ══════════════════════════════════ -->
     <div class="slide slide-content" data-slide="5">
         <div class="gradient-mesh">
@@ -439,22 +472,68 @@
         <div class="content">
             <p class="eyebrow reveal">MERGE CLASSICO</p>
             <h2 class="reveal">Un merge commit preserva la biforcazione</h2>
-            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;">
-                <div class="reveal">
-                    <div class="code-block" style="margin-bottom:1rem;">
-                        <span class="label">prima del merge</span>
-                        main:    A ─── B ─── C<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br>
-                        feature:  D ─── E
-                    </div>
-                    <div class="code-block">
-                        <span class="label">dopo git merge feature</span>
-                        main:    A ─── B ─── C ─── <span class="kw">M</span><br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/<br>
-                        feature:  D ─────── E
-                    </div>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.4rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;align-items:start;">
+
+                <!-- SVG GRAPH -->
+                <div class="commit-graph-wrap reveal">
+                    <!--
+                        Layout (viewBox 0 0 340 160):
+                        Row main   y=50:  A(40)  B(100)  C(160)  M(280)
+                        Row feat   y=110: D(100) E(160)
+                        Fork from B(100,50) → D(100,110) [vertical drop]
+                        Merge E(160,110) → M(280,50)  [curve up]
+                    -->
+                    <svg viewBox="0 0 340 160" xmlns="http://www.w3.org/2000/svg" aria-label="Merge graph">
+                        <!-- DEFS: arrowhead -->
+                        <defs>
+                            <marker id="arr-m" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                                <polygon points="0 0, 7 3.5, 0 7" fill="#6284bb" opacity="0.7"/>
+                            </marker>
+                            <marker id="arr-pk" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                                <polygon points="0 0, 7 3.5, 0 7" fill="#ff168e" opacity="0.9"/>
+                            </marker>
+                            <filter id="glow-n" x="-40%" y="-40%" width="180%" height="180%">
+                                <feGaussianBlur stdDeviation="3" result="blur"/>
+                                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                            </filter>
+                        </defs>
+
+                        <!-- PATHS main line: A→B→C→M -->
+                        <path class="cg-path" d="M40,50 L260,50" stroke="#6284bb" stroke-width="2.5" style="animation-delay:0.05s;animation-duration:0.6s;"/>
+                        <!-- fork: B down to D -->
+                        <path class="cg-path" d="M100,50 C100,75 100,85 100,110" stroke="#4cde9a" stroke-width="2.5" style="animation-delay:0.3s;animation-duration:0.3s;"/>
+                        <!-- feature line D→E -->
+                        <path class="cg-path" d="M100,110 L160,110" stroke="#4cde9a" stroke-width="2.5" style="animation-delay:0.45s;animation-duration:0.3s;"/>
+                        <!-- merge: E curve up to M -->
+                        <path class="cg-path" d="M160,110 C220,110 220,50 280,50" stroke="#ff168e" stroke-width="2.5" stroke-dasharray="6 3" style="animation-delay:0.65s;animation-duration:0.5s;"/>
+
+                        <!-- NODES main -->
+                        <circle class="cg-node" cx="40"  cy="50" r="10" fill="#2a3142" stroke="#6284bb" stroke-width="2.5" filter="url(#glow-n)" style="animation-delay:0.1s;"/>
+                        <circle class="cg-node" cx="100" cy="50" r="10" fill="#2a3142" stroke="#6284bb" stroke-width="2.5" filter="url(#glow-n)" style="animation-delay:0.2s;"/>
+                        <circle class="cg-node" cx="160" cy="50" r="10" fill="#2a3142" stroke="#6284bb" stroke-width="2.5" filter="url(#glow-n)" style="animation-delay:0.28s;"/>
+                        <!-- NODES feature -->
+                        <circle class="cg-node" cx="100" cy="110" r="10" fill="#2a3142" stroke="#4cde9a" stroke-width="2.5" filter="url(#glow-n)" style="animation-delay:0.42s;"/>
+                        <circle class="cg-node" cx="160" cy="110" r="10" fill="#2a3142" stroke="#4cde9a" stroke-width="2.5" filter="url(#glow-n)" style="animation-delay:0.56s;"/>
+                        <!-- MERGE commit M -->
+                        <circle class="cg-node" cx="280" cy="50"  r="13" fill="#ff168e" stroke="#ff168e" stroke-width="2.5" filter="url(#glow-n)" style="animation-delay:0.80s;" opacity="0.95"/>
+
+                        <!-- LABELS commit letters -->
+                        <text x="40"  y="54" text-anchor="middle" font-family="Jost,sans-serif" font-size="11" font-weight="600" fill="#f2f2f2" style="pointer-events:none;">A</text>
+                        <text x="100" y="54" text-anchor="middle" font-family="Jost,sans-serif" font-size="11" font-weight="600" fill="#f2f2f2" style="pointer-events:none;">B</text>
+                        <text x="160" y="54" text-anchor="middle" font-family="Jost,sans-serif" font-size="11" font-weight="600" fill="#f2f2f2" style="pointer-events:none;">C</text>
+                        <text x="100" y="114" text-anchor="middle" font-family="Jost,sans-serif" font-size="11" font-weight="600" fill="#f2f2f2" style="pointer-events:none;">D</text>
+                        <text x="160" y="114" text-anchor="middle" font-family="Jost,sans-serif" font-size="11" font-weight="600" fill="#f2f2f2" style="pointer-events:none;">E</text>
+                        <text x="280" y="54" text-anchor="middle" font-family="Jost,sans-serif" font-size="11" font-weight="700" fill="#fff" style="pointer-events:none;">M</text>
+
+                        <!-- BRANCH labels -->
+                        <text x="16" y="36" font-family="Jost,sans-serif" font-size="10" font-weight="600" fill="#6284bb" letter-spacing="0.08em">main</text>
+                        <text x="62" y="130" font-family="Jost,sans-serif" font-size="10" font-weight="600" fill="#4cde9a" letter-spacing="0.08em">feature</text>
+                        <text x="254" y="36" font-family="Jost,sans-serif" font-size="10" font-weight="600" fill="#ff168e" letter-spacing="0.04em">merge</text>
+                    </svg>
                 </div>
+
+                <!-- LEGEND -->
                 <div class="reveal">
                     <p style="color:rgba(242,242,242,0.75);font-size:0.92rem;line-height:1.65;margin-bottom:0.8rem;"><strong style="color:#f2f2f2;">M</strong> è il merge commit: ha <em>due parent</em>, C e E. Git registra esattamente quando i rami si sono incontrati.</p>
                     <div class="callout-ok" style="margin-bottom:0.7rem;">
@@ -472,7 +551,7 @@
     </div>
 
     <!-- ══════════════════════════════════
-         SLIDE 6 · REBASE: LA MECCANICA
+         SLIDE 6 · REBASE: LA MECCANICA  (SVG graph)
          ══════════════════════════════════ -->
     <div class="slide slide-content" data-slide="6">
         <div class="gradient-mesh">
@@ -482,22 +561,87 @@
         <div class="content">
             <p class="eyebrow reveal">GIT REBASE</p>
             <h2 class="reveal">Riscrive il parent — non il contenuto</h2>
-            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.6rem;"></span>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;">
-                <div class="reveal">
-                    <div class="code-block" style="margin-bottom:1rem;">
-                        <span class="label">prima del rebase</span>
-                        main:    A ─── B ─── C<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br>
-                        feature:  D' ─ E'
-                    </div>
-                    <div class="code-block">
-                        <span class="label">dopo git rebase main</span>
-                        main:    A ─── B ─── C<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\<br>
-                        feature:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ok">D''</span> ─ <span class="ok">E''</span>
-                    </div>
+            <span class="lodestar-line reveal" style="width:60px;display:block;margin-bottom:1.4rem;"></span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.6rem;align-items:start;">
+
+                <!-- SVG GRAPH REBASE -->
+                <div class="commit-graph-wrap reveal">
+                    <!--
+                        PRIMA (top half, y 15–75):
+                          main y=32:  A(40) B(100) C(160)
+                          feat y=65:  D'(100) E'(160)   fork from B
+                        DOPO  (bottom half, y 95–145):
+                          main y=105: A(40) B(100) C(160)
+                          feat y=105 continuazione: D''(220) E''(280)  (inline after C)
+                        Divider line at y=88
+                    -->
+                    <svg viewBox="0 0 340 175" xmlns="http://www.w3.org/2000/svg" aria-label="Rebase graph">
+                        <defs>
+                            <filter id="glow-r" x="-40%" y="-40%" width="180%" height="180%">
+                                <feGaussianBlur stdDeviation="3" result="blur"/>
+                                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                            </filter>
+                            <!-- ghost style for old commits -->
+                        </defs>
+
+                        <!-- ── DIVIDER ── -->
+                        <line x1="0" y1="88" x2="340" y2="88" stroke="rgba(255,255,255,0.07)" stroke-width="1" stroke-dasharray="4 4"/>
+                        <text x="6"   y="83" font-family="Jost,sans-serif" font-size="8.5" fill="rgba(242,242,242,0.35)" letter-spacing="0.10em">PRIMA</text>
+                        <text x="6"   y="101" font-family="Jost,sans-serif" font-size="8.5" fill="rgba(242,242,242,0.35)" letter-spacing="0.10em">DOPO</text>
+
+                        <!-- ═══ PRIMA ═══ -->
+                        <!-- main line A→B→C -->
+                        <path class="cg-path" d="M40,32 L160,32" stroke="#6284bb" stroke-width="2.5" style="animation-delay:0.05s;animation-duration:0.5s;"/>
+                        <!-- fork B down to D' -->
+                        <path class="cg-path" d="M100,32 C100,48 100,54 100,65" stroke="#4cde9a" stroke-width="2" style="animation-delay:0.28s;animation-duration:0.25s;"/>
+                        <!-- feat D'→E' -->
+                        <path class="cg-path" d="M100,65 L160,65" stroke="#4cde9a" stroke-width="2" style="animation-delay:0.42s;animation-duration:0.25s;"/>
+
+                        <!-- NODES PRIMA main -->
+                        <circle class="cg-node" cx="40"  cy="32" r="9"  fill="#2a3142" stroke="#6284bb" stroke-width="2.2" filter="url(#glow-r)" style="animation-delay:0.10s;"/>
+                        <circle class="cg-node" cx="100" cy="32" r="9"  fill="#2a3142" stroke="#6284bb" stroke-width="2.2" filter="url(#glow-r)" style="animation-delay:0.18s;"/>
+                        <circle class="cg-node" cx="160" cy="32" r="9"  fill="#2a3142" stroke="#6284bb" stroke-width="2.2" filter="url(#glow-r)" style="animation-delay:0.26s;"/>
+                        <!-- NODES PRIMA feat -->
+                        <circle class="cg-node" cx="100" cy="65" r="9"  fill="#2a3142" stroke="#4cde9a" stroke-width="2.2" filter="url(#glow-r)" style="animation-delay:0.40s;" opacity="0.65"/>
+                        <circle class="cg-node" cx="160" cy="65" r="9"  fill="#2a3142" stroke="#4cde9a" stroke-width="2.2" filter="url(#glow-r)" style="animation-delay:0.52s;" opacity="0.65"/>
+
+                        <!-- labels PRIMA -->
+                        <text x="40"  y="36" text-anchor="middle" font-family="Jost,sans-serif" font-size="10" font-weight="600" fill="#f2f2f2">A</text>
+                        <text x="100" y="36" text-anchor="middle" font-family="Jost,sans-serif" font-size="10" font-weight="600" fill="#f2f2f2">B</text>
+                        <text x="160" y="36" text-anchor="middle" font-family="Jost,sans-serif" font-size="10" font-weight="600" fill="#f2f2f2">C</text>
+                        <text x="100" y="69" text-anchor="middle" font-family="Jost,sans-serif" font-size="10" font-weight="600" fill="rgba(76,222,154,0.6)">D'</text>
+                        <text x="160" y="69" text-anchor="middle" font-family="Jost,sans-serif" font-size="10" font-weight="600" fill="rgba(76,222,154,0.6)">E'</text>
+                        <text x="18"  y="28" font-family="Jost,sans-serif" font-size="9" font-weight="600" fill="#6284bb" letter-spacing="0.06em">main</text>
+                        <text x="64"  y="80" font-family="Jost,sans-serif" font-size="9" font-weight="600" fill="rgba(76,222,154,0.6)" letter-spacing="0.06em">feature</text>
+
+                        <!-- ═══ DOPO ═══ -->
+                        <!-- main + feature inline: A→B→C→D''→E'' -->
+                        <path class="cg-path" d="M40,118 L300,118" stroke="#6284bb" stroke-width="2.5" style="animation-delay:0.60s;animation-duration:0.7s;"/>
+
+                        <!-- NODES DOPO -->
+                        <circle class="cg-node" cx="40"  cy="118" r="9"  fill="#2a3142" stroke="#6284bb" stroke-width="2.2" filter="url(#glow-r)" style="animation-delay:0.65s;"/>
+                        <circle class="cg-node" cx="100" cy="118" r="9"  fill="#2a3142" stroke="#6284bb" stroke-width="2.2" filter="url(#glow-r)" style="animation-delay:0.72s;"/>
+                        <circle class="cg-node" cx="160" cy="118" r="9"  fill="#2a3142" stroke="#6284bb" stroke-width="2.2" filter="url(#glow-r)" style="animation-delay:0.78s;"/>
+                        <!-- new rebased commits: green filled -->
+                        <circle class="cg-node" cx="220" cy="118" r="10" fill="#4cde9a" stroke="#4cde9a" stroke-width="2" filter="url(#glow-r)" style="animation-delay:0.90s;" opacity="0.92"/>
+                        <circle class="cg-node" cx="280" cy="118" r="10" fill="#4cde9a" stroke="#4cde9a" stroke-width="2" filter="url(#glow-r)" style="animation-delay:1.00s;" opacity="0.92"/>
+
+                        <!-- labels DOPO -->
+                        <text x="40"  y="122" text-anchor="middle" font-family="Jost,sans-serif" font-size="10" font-weight="600" fill="#f2f2f2">A</text>
+                        <text x="100" y="122" text-anchor="middle" font-family="Jost,sans-serif" font-size="10" font-weight="600" fill="#f2f2f2">B</text>
+                        <text x="160" y="122" text-anchor="middle" font-family="Jost,sans-serif" font-size="10" font-weight="600" fill="#f2f2f2">C</text>
+                        <text x="220" y="122" text-anchor="middle" font-family="Jost,sans-serif" font-size="10" font-weight="700" fill="#1e2535">D''</text>
+                        <text x="280" y="122" text-anchor="middle" font-family="Jost,sans-serif" font-size="10" font-weight="700" fill="#1e2535">E''</text>
+                        <text x="18"  y="113" font-family="Jost,sans-serif" font-size="9" font-weight="600" fill="#6284bb" letter-spacing="0.06em">main</text>
+                        <text x="196" y="144" font-family="Jost,sans-serif" font-size="9" font-weight="600" fill="#4cde9a" letter-spacing="0.06em">rebased</text>
+
+                        <!-- arrow showing SHA rewrite -->
+                        <path d="M178,65 C200,65 200,105 218,110" stroke="rgba(255,22,142,0.45)" stroke-width="1.5" fill="none" stroke-dasharray="3 3"/>
+                        <text x="195" y="90" font-family="Jost,sans-serif" font-size="8" fill="rgba(255,22,142,0.65)" transform="rotate(-60,195,90)">nuovi SHA</text>
+                    </svg>
                 </div>
+
+                <!-- LEGEND -->
                 <div class="reveal">
                     <p style="color:rgba(242,242,242,0.75);font-size:0.92rem;line-height:1.65;margin-bottom:0.9rem;">
                         Git prende ogni commit di <em>feature</em>, lo <strong style="color:#ff168e;">riapplica come patch</strong> sopra l'ultimo commit di main, e crea un <em>nuovo</em> SHA. D e E scompaiono — nascono D'' e E'' con parent diverso.
@@ -1027,6 +1171,12 @@ function animateSlide(slide) {
         el.style.transition = `opacity 0.38s ease ${delay}s, transform 0.38s ease ${delay}s`;
         el.style.opacity = '1';
         el.style.transform = 'translateY(0)';
+    });
+    /* Re-trigger SVG animations on slide enter */
+    slide.querySelectorAll('.cg-path, .cg-node').forEach(el => {
+        el.style.animation = 'none';
+        el.offsetHeight;
+        el.style.animation = '';
     });
 }
 
